@@ -12,7 +12,7 @@ contract InterchainProofContract is Script{
     function run() external{
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
-        address routerAddress = 0x37733D21BE60c4C6Ad03d297d90e03AbE4c9dD92;
+        address routerAddress = 0xa0034B1872535Fbbda1F4d5E3319cB11F32E22af;
         string memory proof = vm.readLine("circuit.proof");
         bytes memory proofBytes = vm.parseBytes(proof);
         bytes32[] memory publicInputs = new bytes32[](1);

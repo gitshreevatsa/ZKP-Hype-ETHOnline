@@ -1,28 +1,62 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@hyperlane-xyz/core/contracts/interfaces/IInterchainSecurityModule.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+interface IInterchainSecurityModule {
+    enum Types {
+        UNUSED,
+        ROUTING,
+        AGGREGATION,
+        LEGACY_MULTISIG,
+        MERKLE_ROOT_MULTISIG,
+        MESSAGE_ID_MULTISIG,
+        NULL, // used with relayer carrying no metadata
+        CCIP_READ
+    }
 
-abstract contract AbstractZKPISM is IInterchainSecurityModule, Ownable{
+    /**
+     * @notice Returns an enum that represents the type of security model
+     * encoded by this ISM.
+     * @dev Relayers infer how to fetch and format metadata.
+     */
+    function moduleType() external view returns (uint8);
 
-    // enum ZKPStatus{NOT, FALSE, TRUE}
+    /**
+     * @notice Defines a security model responsible for verifying interchain
+     * messages based on the provided metadata.
+     * @param _metadata Off-chain metadata provided by a relayer, specific to
+     * the security model encoded by the module (e.g. validator signatures)
+     * @param _message Hyperlane encoded interchain message
+     * @return True if the message was verified
+     */
+    function verify(bytes calldata _metadata, bytes calldata _message)
+        external
+        returns (bool);
+}
+
+interface ISpecifiesInterchainSecurityModule {
+    function interchainSecurityModule()
+        external
+        view
+        returns (IInterchainSecurityModule);
+}
+
+
+abstract contract AbstractZKPISM is IInterchainSecurityModule{
+
+    enum ZKPStatus{NOT, FALSE, TRUE}
 
     uint8 public constant moduleType =
         uint8(IInterchainSecurityModule.Types.ROUTING);
-
-    uint8 public threshold = 1;
     address public baseISM;
 
-    mapping(bytes => uint32) msgStatus;
-    mapping(address => bool) offchainAgents;
+    mapping(bytes32 => ZKPStatus) msgStatus;
 
-    function changeThreshold(uint8 _threshold) external onlyOwner{
-        threshold= _threshold;
+    function updateResult(bytes32 _hash, bool _res) external{
+        msgStatus[_hash] = (_res==true ? ZKPStatus.TRUE : ZKPStatus.FALSE);
     }
 
-    function addOffchainAgent(address _offchainAgent) external onlyOwner{
-        offchainAgents[_offchainAgent] = true;
+    function isCached(bytes32 _hash) view external returns(ZKPStatus _status){
+        _status = msgStatus[_hash];
     }
 
     function route(bytes calldata _message)
@@ -30,8 +64,16 @@ abstract contract AbstractZKPISM is IInterchainSecurityModule, Ownable{
         virtual
         returns (IInterchainSecurityModule){
         (uint256 instrType, uint256 nonceCount, uint256 packetNo, uint256 totalPackets, bytes memory data) = abi.decode(Message.body(_message), (uint256, uint256, uint256, uint256, bytes));
-        
+        (bytes32 hashedKey, bool res) = abi.decode(data, (bytes32, bool));
+        require(msgStatus[hashedKey]!=ZKPStatus.NOT, "Results not yet updated by offchain agent !!!");
+        require(msgStatus[hashedKey]==(res==true ? ZKPStatus.TRUE : ZKPStatus.FALSE), "Result not matching !!!");
         return IInterchainSecurityModule(baseISM);
+    }
+
+    function verify(bytes calldata _metadata, bytes calldata _message)
+    public
+    returns (bool){
+        return route(_message).verify(_metadata, _message);
     }
 
 

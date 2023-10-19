@@ -14,6 +14,8 @@ interface IReceiver{
 
 contract Router{
 
+    IInterchainSecurityModule public interchainSecurityModule;
+
     struct ReceiverContext{
         bytes data;
         uint256 lastReceivedPacket;
@@ -34,10 +36,15 @@ contract Router{
     }
 
     event SentResult(bytes32 indexed receiver, bytes data);
+    event InterchainComputationRequested(bytes32 hash, uint256 origin, uint32 dest, address verifier, bytes proof, bytes32[] publicInputs);
 
     constructor(address _mailbox, address _interchainGasPaymaster){
         mailbox = _mailbox;
         interchainGasPaymaster = _interchainGasPaymaster;
+    }
+
+    function setInterchainSecurityModule(address _ism) external {
+        interchainSecurityModule = IInterchainSecurityModule(_ism);
     }
 
     function addRemote(uint32 _dest, address _router) external{
@@ -77,6 +84,7 @@ contract Router{
         // );
         receiver[abi.encode(_dest, routerAddress, nonce[nonceKey])] = msg.sender;
         nonce[nonceKey]++;
+        emit InterchainComputationRequested(keccak256(abi.encode(_proof, _publicInputs, _receipient)), block.chainid, _dest, _receipient, _proof, _publicInputs);
     }
 
     function handle(uint32 _origin, bytes32 _sender, bytes memory _body) external onlyMailbox(){
@@ -91,9 +99,9 @@ contract Router{
                 bytes32 messageId = "";
                 (bytes memory _proof, bytes32[] memory _publicInputs) = abi.decode(contexts[abi.encode(_origin, _sender, nonceCount)].data, (bytes, bytes32[]));
                 try IVerifier(contexts[abi.encode(_origin, _sender, nonceCount)].recipient).verifyInputs(_proof, _publicInputs) returns(bool res){
-                    messageId = IMailbox(mailbox).dispatch(_origin, _sender, abi.encode(3, nonceCount, 0, 0, abi.encode(res)));
+                    messageId = IMailbox(mailbox).dispatch(_origin, _sender, abi.encode(3, nonceCount, 0, 0, abi.encode(keccak256(abi.encode(_proof, _publicInputs, contexts[abi.encode(_origin, _sender, nonceCount)].recipient)), res)));
                 }catch{
-                    messageId = IMailbox(mailbox).dispatch(_origin, _sender, abi.encode(3, nonceCount, 0, 0, abi.encode(false)));
+                    messageId = IMailbox(mailbox).dispatch(_origin, _sender, abi.encode(3, nonceCount, 0, 0, abi.encode(keccak256(abi.encode(_proof, _publicInputs, contexts[abi.encode(_origin, _sender, nonceCount)].recipient)), false)));
                 }
                 // uint256 quote = IInterchainGasPaymaster(interchainGasPaymaster).quoteGasPayment(_origin, 1000000);
                 // IInterchainGasPaymaster(interchainGasPaymaster).payForGas{value: quote}(
@@ -105,7 +113,8 @@ contract Router{
                 //emit SentResult(_sender, contexts[abi.encode(_origin, _sender, nonceCount)].data);
             }
         }else if(instrType == 3){
-            IReceiver(receiver[abi.encode(_origin, _sender, nonceCount)]).handleInterchainRes(abi.decode(data, (bool)));
+            (bytes32 hashedKey, bool res) = abi.decode(data, (bytes32, bool));
+            IReceiver(receiver[abi.encode(_origin, _sender, nonceCount)]).handleInterchainRes(res);
         }
     }
 
