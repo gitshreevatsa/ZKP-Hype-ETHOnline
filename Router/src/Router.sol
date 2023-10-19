@@ -58,30 +58,30 @@ contract Router{
         require(remoteRouters[_dest] != address(0), "No remote routers found !!!");
         bytes32 routerAddress = addressToBytes32(remoteRouters[_dest]);
         bytes32 startMessageId = IMailbox(mailbox).dispatch(_dest, routerAddress, abi.encode(1, nonce[nonceKey], 0, 0, abi.encode(_receipient)));
-        // uint256 recursiveQuote = IInterchainGasPaymaster(interchainGasPaymaster).quoteGasPayment(_dest, 1000000);
-        // IInterchainGasPaymaster(interchainGasPaymaster).payForGas{value: recursiveQuote}(
-        //     startMessageId,
-        //     _dest,
-        //     1000000,
-        //     address(this)
-        // );
+        uint256 recursiveQuote = IInterchainGasPaymaster(interchainGasPaymaster).quoteGasPayment(_dest, 1000000);
+        IInterchainGasPaymaster(interchainGasPaymaster).payForGas{value: recursiveQuote}(
+            startMessageId,
+            _dest,
+            1000000,
+            address(this)
+        );
         for(i=0; i<(_data.length/1700); i++){
             bytes32 recursiveMessageId = IMailbox(mailbox).dispatch(_dest, routerAddress, abi.encode(2, nonce[nonceKey], i, _data.length/1700, BytesLib.slice(_data, (i*1700), 1700)));
-            // IInterchainGasPaymaster(interchainGasPaymaster).payForGas{value: recursiveQuote}(
-            //     recursiveMessageId,
-            //     _dest,
-            //     1000000,
-            //     address(this)
-            // );
+            IInterchainGasPaymaster(interchainGasPaymaster).payForGas{value: recursiveQuote}(
+                recursiveMessageId,
+                _dest,
+                1000000,
+                address(this)
+            );
         }
         bytes32 messageId = IMailbox(mailbox).dispatch(_dest, routerAddress, abi.encode(2, nonce[nonceKey], i, _data.length/1700, BytesLib.slice(_data, (i*1700), (_data.length)-(i*1700))));
-        // uint256 quote = IInterchainGasPaymaster(interchainGasPaymaster).quoteGasPayment(_dest, 10000000);
-        // IInterchainGasPaymaster(interchainGasPaymaster).payForGas{value: quote}(
-        //     messageId,
-        //     _dest,
-        //     10000000,
-        //     address(this)
-        // );
+        uint256 quote = IInterchainGasPaymaster(interchainGasPaymaster).quoteGasPayment(_dest, 10000000);
+        IInterchainGasPaymaster(interchainGasPaymaster).payForGas{value: quote}(
+            messageId,
+            _dest,
+            10000000,
+            address(this)
+        );
         receiver[abi.encode(_dest, routerAddress, nonce[nonceKey])] = msg.sender;
         nonce[nonceKey]++;
         emit InterchainComputationRequested(keccak256(abi.encode(_proof, _publicInputs, _receipient)), block.chainid, _dest, _receipient, _proof, _publicInputs);
@@ -103,14 +103,14 @@ contract Router{
                 }catch{
                     messageId = IMailbox(mailbox).dispatch(_origin, _sender, abi.encode(3, nonceCount, 0, 0, abi.encode(keccak256(abi.encode(_proof, _publicInputs, contexts[abi.encode(_origin, _sender, nonceCount)].recipient)), false)));
                 }
-                // uint256 quote = IInterchainGasPaymaster(interchainGasPaymaster).quoteGasPayment(_origin, 1000000);
-                // IInterchainGasPaymaster(interchainGasPaymaster).payForGas{value: quote}(
-                //     messageId,
-                //     _origin,
-                //     1000000,
-                //     address(this)
-                // );
-                //emit SentResult(_sender, contexts[abi.encode(_origin, _sender, nonceCount)].data);
+                uint256 quote = IInterchainGasPaymaster(interchainGasPaymaster).quoteGasPayment(_origin, 1000000);
+                IInterchainGasPaymaster(interchainGasPaymaster).payForGas{value: quote}(
+                    messageId,
+                    _origin,
+                    1000000,
+                    address(this)
+                );
+                emit SentResult(_sender, contexts[abi.encode(_origin, _sender, nonceCount)].data);
             }
         }else if(instrType == 3){
             (bytes32 hashedKey, bool res) = abi.decode(data, (bytes32, bool));
