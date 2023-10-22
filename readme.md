@@ -3,6 +3,20 @@ With every passing day, we are able to observe extensive use cases of ZKP in the
 
 Here is where ZKP-Hype comes into the picture. In our approach, the dapp is deployed over in L1 but the ZKP computational part is moved to the L2 chain. By doing this, the user pays less gas fees and can still have their funds in the L1 chain.
 
+# L2 contract addresses
+## zkEVM
+L2 Verifier:-
+0xC0eB65078d6b7047e92a10807Bd4348765953190<br>
+L2 Router:- 
+0x51525dA9BC4bE3dc88CCdE33F7CB70d87500fdAB
+
+## Scroll
+L2 Verifier(Successfully verified):-
+0x335A3359024b959df5C7e6a7D994236E604958bA<br>
+L2 Router(Tried verifying got status "Ok" in the foundry but was not verified in Explorer):-<br>
+(You can find the contract at ./Router/src/Router.sol)<br>
+0xAfC3a4180F344724E1EE5D2B2124b6eF90A2d7Ac
+
 # Architecture of the project
 We have executed our planned architecture with these 4 verticals:-
 
