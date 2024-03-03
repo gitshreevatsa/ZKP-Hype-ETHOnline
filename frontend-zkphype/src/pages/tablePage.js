@@ -130,7 +130,7 @@ const handleInputChange =(e)=>{
   <Grid item xs={12}>
   Lowest gas fee chain
   </Grid> <Grid item xs={12}>
-    Scroll
+    opBNB
   </Grid>
            
   </Grid>

@@ -7,7 +7,7 @@ function Navigation() {
   }
     return (
       <div className="mainHeader">
-         ZKPHype
+         Interloom
          <div className='centerHeader' onClick={getMainPage}>Home</div>
          
       </div>
